@@ -41,8 +41,8 @@ export default function AdminDashboard() {
     // Load stats from sample data
     setStats({
       totalCars: sampleCars.length,
-      availableCars: sampleCars.filter((c) => c.status === "available").length,
-      soldCars: sampleCars.filter((c) => c.status === "sold").length,
+      availableCars: sampleCars.filter((c) => (c.status as string) === "available").length,
+      soldCars: sampleCars.filter((c) => (c.status as string) === "sold").length,
       pendingSubmissions: 3,
       totalDealers: sampleDealers.length,
       activeDealers: sampleDealers.filter((d) => d.status === "active").length,
