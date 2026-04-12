@@ -134,8 +134,8 @@ Only these emails have admin privileges:
 
 | Email | Password |
 |-------|----------|
-| jskjageer@gmail.com | Jsk@786 |
-| kalimdon07@gmail.com | Kalim@786 |
+| jskjageer@gmail.com | ******** |
+| kalimdon07@gmail.com | ******** |
 
 > First, create Firebase accounts with these emails via the Login page,
 > then they'll automatically have admin access.
