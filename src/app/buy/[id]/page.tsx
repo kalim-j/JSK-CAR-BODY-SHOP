@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Fuel, Gauge, Settings, MapPin, Calendar, Shield, Phone, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Fuel, Gauge, Settings, MapPin, Phone, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { sampleCars } from "@/lib/sampleData";
 import type { Car } from "@/lib/firestore";
