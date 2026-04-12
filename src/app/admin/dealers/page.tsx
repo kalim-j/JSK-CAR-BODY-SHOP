@@ -741,7 +741,7 @@ export default function AdminDealersPage() {
                     </label>
                     {type === "input" ? (
                       <input
-                        value={(aiQuery as Record<string, string>)[key]}
+                        value={(aiQuery as any)[key]}
                         onChange={(e) =>
                           setAiQuery((prev) => ({ ...prev, [key]: e.target.value }))
                         }
@@ -750,7 +750,7 @@ export default function AdminDealersPage() {
                       />
                     ) : (
                       <select
-                        value={(aiQuery as Record<string, string>)[key]}
+                        value={(aiQuery as any)[key]}
                         onChange={(e) =>
                           setAiQuery((prev) => ({ ...prev, [key]: e.target.value }))
                         }
