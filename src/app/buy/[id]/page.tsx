@@ -18,7 +18,7 @@ export default function CarDetailPage({ params }: { params: Promise<{ id: string
 
   useEffect(() => {
     // Try to find from sample data
-    const found = sampleCars.find((c, i) => String(i) === unwrappedParams.id || c.id === unwrappedParams.id);
+    const found = sampleCars.find((c, i) => String(i) === unwrappedParams.id || (c as Car).id === unwrappedParams.id);
     if (found) {
       setCar(found as Car);
     } else {
