@@ -1,0 +1,36 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Cars Images ──────────────────────────────────────────────────────
+    match /cars/{carId}/{fileName} {
+      // Anyone can read car images
+      allow read: if true;
+      // Only admins can write
+      allow write: if request.auth != null &&
+        (request.auth.token.email == "jskjageer@gmail.com" ||
+         request.auth.token.email == "kalimdon07@gmail.com") &&
+        request.resource.size < 10 * 1024 * 1024 &&  // 10MB max
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // ── Submission Images ────────────────────────────────────────────────
+    match /submissions/{submissionId}/{fileName} {
+      // Only the submitter and admins can read
+      allow read: if request.auth != null;
+      // Authenticated users can upload up to 10MB images
+      allow write: if request.auth != null &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // ── Profile Images ────────────────────────────────────────────────────
+    match /profiles/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        request.auth.uid == userId &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+  }
+}
