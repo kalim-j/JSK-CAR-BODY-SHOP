@@ -145,7 +145,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <h1 className="text-white text-2xl font-bold font-display">{userData?.name || user.displayName || "JSK User"}</h1>
-                <p className="text-charcoal-400 text-sm">Member since {formatDate(userData?.createdAt || user.metadata.creationTime)}</p>
+                <p className="text-charcoal-400 text-sm">Member since {formatDate(userData?.createdAt || user.metadata.creationTime || new Date())}</p>
                 {isAdmin && (
                   <Link href="/admin" className="inline-flex items-center gap-2 mt-4 px-4 py-1.5 rounded-full bg-gold-500/10 border border-gold-500/30 text-gold-400 text-xs font-bold hover:bg-gold-500/20 transition-all">
                     <LayoutDashboard size={14} /> Admin Panel
@@ -274,7 +274,7 @@ export default function ProfilePage() {
                           <div className="flex flex-col">
                     <span className="text-charcoal-500 text-[10px] uppercase font-black tracking-widest">Date Listed</span>
                             <span className="text-charcoal-300 text-xs font-medium">
-                        {formatDate(car.createdAt)}
+                        {formatDate(car.createdAt || new Date())}
                             </span>
                           </div>
                           <button className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-gold-500 hover:text-black transition-all group/btn">
