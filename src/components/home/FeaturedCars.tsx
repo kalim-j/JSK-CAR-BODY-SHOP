@@ -10,6 +10,8 @@ import { formatPrice } from "@/lib/utils";
 import { CarGridSkeleton } from "@/components/ui/Skeleton";
 import { sampleCars } from "@/lib/sampleData";
 import type { Car } from "@/lib/firestore";
+import { db } from "@/lib/firebase";
+import { collection, query, where, limit, onSnapshot } from "firebase/firestore";
 
 export default function FeaturedCars() {
   const [cars, setCars] = useState<Car[]>([]);
@@ -17,12 +19,37 @@ export default function FeaturedCars() {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.05 });
 
   useEffect(() => {
-    // Load sample data — replace with Firestore in production
-    const timer = setTimeout(() => {
-      setCars(sampleCars.filter((c) => c.featured).slice(0, 6) as Car[]);
+    // Live Firestore sync for featured cars
+    const q = query(
+      collection(db, "cars"),
+      where("featured", "==", true),
+      limit(6)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Car[];
+
+      if (data.length > 0) {
+        setCars(data);
+      } else {
+        // Fallback to mapped sample data if DB is empty to avoid blank section during first launch
+        const formatted = sampleCars
+          .filter(e => e.featured)
+          .slice(0, 6)
+          .map(e => ({
+            ...e,
+            name: (e as any).title,
+            fuel: (e as any).fuelType
+          } as unknown as Car));
+        setCars(formatted);
+      }
       setLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   return (
