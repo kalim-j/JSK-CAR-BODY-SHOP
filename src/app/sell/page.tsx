@@ -20,6 +20,8 @@ import { uploadSubmissionImages } from "@/lib/storage";
 import { INDIAN_STATES, CAR_BRANDS } from "@/lib/utils";
 import toast from "react-hot-toast";
 import Image from "next/image";
+import { db } from "@/lib/firebase";
+import { collection, addDoc } from "firebase/firestore";
 
 const sellSchema = z.object({
   carBrand: z.string().min(1, "Brand required"),
@@ -93,24 +95,34 @@ export default function SellPage() {
         toast("Note: Images saved locally. Firebase Storage may need configuration.", { icon: "⚠" });
       }
 
-      await addSubmission({
+      await addDoc(collection(db, "car_submissions"), {
         userId: user.uid,
         userEmail: user.email || "",
         userName: user.displayName || user.email || "User",
-        ...data,
+        carBrand: data.carBrand,
+        carModel: data.carModel,
+        carYear: data.carYear,
+        expectedPrice: data.expectedPrice,
+        damageDescription: data.damageDescription,
+        damageLevel: data.damageLevel,
+        city: data.city,
+        state: data.state,
+        phone: data.phone,
         images: imageUrls,
         status: "pending",
+        createdAt: new Date()
       });
 
       setSuccess(true);
       reset();
       setImages([]);
       setImagePreviews([]);
+      toast.success("Car submitted successfully ✅");
     } catch (error) {
-      console.error(error);
-      toast.error("Submission failed. Please try again.");
+      console.error("Error submitting form:", error);
+      toast.error("Error submitting form ❌");
     } finally {
-      setSubmitting(false);
+      setSubmitting(false); // 🔥 VERY IMPORTANT FIX
     }
   };
 
@@ -466,16 +478,9 @@ export default function SellPage() {
                   disabled={submitting}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="btn-gold px-12 py-4 rounded-full font-bold text-base disabled:opacity-70 flex items-center gap-3 mx-auto"
+                  className="bg-gold-500 px-12 py-4 rounded-full font-bold text-black border border-gold-400 hover:bg-gold-400 transition-colors disabled:opacity-70 flex items-center gap-3 mx-auto"
                 >
-                  {submitting ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    "Submit for Review"
-                  )}
+                  {submitting ? "Submitting..." : "Submit"}
                 </motion.button>
               )}
               <p className="text-charcoal-500 text-xs mt-4">

@@ -15,6 +15,8 @@ import {
 import { formatPrice } from "@/lib/utils";
 import toast from "react-hot-toast";
 import type { CarSubmission } from "@/lib/firestore";
+import { db } from "@/lib/firebase";
+import { collection, updateDoc, doc, onSnapshot } from "firebase/firestore";
 
 // Mock submissions data
 const mockSubmissions: CarSubmission[] = [
@@ -81,7 +83,15 @@ export default function AdminSubmissionsPage() {
   const [filter, setFilter] = useState("all");
 
   useEffect(() => {
-    setSubmissions(mockSubmissions);
+    const unsubscribe = onSnapshot(collection(db, "car_submissions"), (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data()
+      })) as CarSubmission[];
+      setSubmissions(data);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const filtered = submissions.filter((s) => {
@@ -89,16 +99,22 @@ export default function AdminSubmissionsPage() {
     return s.status === filter;
   });
 
-  const updateStatus = (id: string, status: CarSubmission["status"], note?: string, price?: number) => {
-    setSubmissions((prev) =>
-      prev.map((s) =>
-        s.id === id
-          ? { ...s, status, adminNotes: note ?? s.adminNotes, offeredPrice: price ?? s.offeredPrice }
-          : s
-      )
-    );
-    toast.success(`Submission status updated to ${status}`);
-    setSelected(null);
+  const handleStatusUpdate = async (id: string, status: CarSubmission["status"], note?: string, price?: number) => {
+    try {
+      const updateData: any = {
+        status: status,
+        updatedAt: new Date()
+      };
+      if (note) updateData.adminNotes = note;
+      if (price) updateData.offeredPrice = price;
+
+      await updateDoc(doc(db, "car_submissions", id), updateData);
+      toast.success(`Submission status updated to ${status}`);
+      setSelected(null);
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Failed to update status");
+    }
   };
 
   const statusColors: Record<string, string> = {
@@ -216,13 +232,13 @@ export default function AdminSubmissionsPage() {
                     <Eye size={14} /> Review
                   </button>
                   <button
-                    onClick={() => updateStatus(sub.id!, "approved")}
+                    onClick={() => handleStatusUpdate(sub.id!, "approved")}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-500/15 text-green-400 hover:bg-green-500/25 rounded-xl text-sm border border-green-500/30 transition-all"
                   >
                     <CheckCircle size={14} /> Approve
                   </button>
                   <button
-                    onClick={() => updateStatus(sub.id!, "rejected")}
+                    onClick={() => handleStatusUpdate(sub.id!, "rejected")}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl text-sm border border-red-500/30 transition-all"
                   >
                     <XCircle size={14} /> Reject
@@ -301,19 +317,19 @@ export default function AdminSubmissionsPage() {
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => updateStatus(selected.id!, "approved", adminNote, offeredPrice ? Number(offeredPrice) : undefined)}
+                  onClick={() => handleStatusUpdate(selected.id!, "approved", adminNote, offeredPrice ? Number(offeredPrice) : undefined)}
                   className="flex-1 py-3 bg-green-500/15 text-green-400 border border-green-500/30 rounded-xl text-sm font-semibold hover:bg-green-500/25 transition-all"
                 >
                   ✓ Approve
                 </button>
                 <button
-                  onClick={() => updateStatus(selected.id!, "under_review", adminNote)}
+                  onClick={() => handleStatusUpdate(selected.id!, "under_review", adminNote)}
                   className="flex-1 py-3 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-xl text-sm font-semibold hover:bg-blue-500/20 transition-all"
                 >
                   👁 Under Review
                 </button>
                 <button
-                  onClick={() => updateStatus(selected.id!, "rejected", adminNote)}
+                  onClick={() => handleStatusUpdate(selected.id!, "rejected", adminNote)}
                   className="flex-1 py-3 bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl text-sm font-semibold hover:bg-red-500/20 transition-all"
                 >
                   ✗ Reject
