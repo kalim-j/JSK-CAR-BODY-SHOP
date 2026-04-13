@@ -3,15 +3,8 @@ service firebase.storage {
   match /b/{bucket}/o {
 
     // ── Cars Images ──────────────────────────────────────────────────────
-    match /cars/{carId}/{fileName} {
-      // Anyone can read car images
-      allow read: if true;
-      // Only admins can write
-      allow write: if request.auth != null &&
-        (request.auth.token.email == "jskjageer@gmail.com" ||
-         request.auth.token.email == "kalimdon07@gmail.com") &&
-        request.resource.size < 10 * 1024 * 1024 &&  // 10MB max
-        request.resource.contentType.matches('image/.*');
+    match /cars/{allPaths=**} {
+      allow read, write: if request.auth != null;
     }
 
     // ── Submission Images ────────────────────────────────────────────────

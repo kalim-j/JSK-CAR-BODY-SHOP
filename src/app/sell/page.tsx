@@ -20,8 +20,18 @@ import { uploadSubmissionImages } from "@/lib/storage";
 import { INDIAN_STATES, CAR_BRANDS } from "@/lib/utils";
 import toast from "react-hot-toast";
 import Image from "next/image";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import { collection, addDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+const isValidURL = (url: string) => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 const sellSchema = z.object({
   carBrand: z.string().min(1, "Brand required"),
@@ -42,6 +52,7 @@ export default function SellPage() {
   const router = useRouter();
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imageLinks, setImageLinks] = useState<string[]>([""]);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -84,15 +95,30 @@ export default function SellPage() {
 
     setSubmitting(true);
     try {
-      const submissionId = `sub_${Date.now()}`;
-      let imageUrls: string[] = [];
+      let uploadedUrls: string[] = [];
 
-      try {
-        imageUrls = await uploadSubmissionImages(images, submissionId);
-      } catch {
-        // Use placeholder URLs if storage fails
-        imageUrls = imagePreviews.slice(0, 3);
-        toast("Note: Images saved locally. Firebase Storage may need configuration.", { icon: "⚠" });
+      // Upload images locally selected
+      if (images.length > 0) {
+        for (const image of images) {
+          const imageRef = ref(storage, `cars/${Date.now()}-${image.name}`);
+          const snapshot = await uploadBytes(imageRef, image);
+          const url = await getDownloadURL(snapshot.ref);
+          uploadedUrls.push(url);
+        }
+      }
+
+      // Filter valid links
+      const validLinks = imageLinks.filter(
+        (link) => link.trim() !== "" && isValidURL(link)
+      );
+
+      // Combine both
+      const finalImages = [...uploadedUrls, ...validLinks];
+
+      if (finalImages.length === 0) {
+        toast.error("Please provide at least 1 image file or valid link");
+        setSubmitting(false);
+        return;
       }
 
       await addDoc(collection(db, "car_submissions"), {
@@ -108,7 +134,7 @@ export default function SellPage() {
         city: data.city,
         state: data.state,
         phone: data.phone,
-        images: imageUrls,
+        images: finalImages,
         status: "pending",
         createdAt: new Date()
       });
@@ -117,6 +143,7 @@ export default function SellPage() {
       reset();
       setImages([]);
       setImagePreviews([]);
+      setImageLinks([""]);
       toast.success("Car submitted successfully ✅");
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -341,7 +368,7 @@ export default function SellPage() {
               </div>
             </div>
 
-            {/* Car Photos */}
+            {/* Car Photos & Links */}
             <div className="glass-dark rounded-2xl p-8 border border-white/5">
               <h2 className="text-white font-bold text-xl mb-6 flex items-center gap-2">
                 <span className="w-7 h-7 rounded-full bg-gold-500 text-black text-sm font-black flex items-center justify-center">
@@ -350,12 +377,45 @@ export default function SellPage() {
                 Car Photos
               </h2>
 
+              <div className="mb-6 space-y-4">
+                <label className="text-charcoal-300 text-sm font-medium block">
+                  Image Links (Optional)
+                </label>
+                {imageLinks.map((link, index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    placeholder="Paste image URL (e.g., Google Drive sharing link, or raw image link)"
+                    value={link}
+                    onChange={(e) => {
+                      const newLinks = [...imageLinks];
+                      newLinks[index] = e.target.value;
+                      setImageLinks(newLinks);
+                    }}
+                    className="input-dark w-full px-4 py-3 rounded-xl text-sm"
+                  />
+                ))}
+                
+                {imageLinks.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setImageLinks([...imageLinks, ""])}
+                    className="text-gold-400 text-sm hover:text-gold-300 transition-colors"
+                  >
+                    + Add Another Link
+                  </button>
+                )}
+              </div>
+
+              <label className="text-charcoal-300 text-sm font-medium block mb-3 mt-8">
+                Or Upload Files
+              </label>
               {/* Upload Zone */}
               <label className="block w-full relative cursor-pointer mb-6">
                 <input
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept="image/png, image/jpeg"
                   onChange={handleImageSelect}
                   className="sr-only"
                 />
@@ -395,7 +455,7 @@ export default function SellPage() {
                       <input
                         type="file"
                         multiple
-                        accept="image/*"
+                        accept="image/png, image/jpeg"
                         onChange={handleImageSelect}
                         className="sr-only"
                       />
