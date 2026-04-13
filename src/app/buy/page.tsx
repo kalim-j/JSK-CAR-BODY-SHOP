@@ -478,7 +478,7 @@ const BuyCarCard = memo(function BuyCarCard({ car, index }: { car: Car; index: n
 
         <div className="flex gap-2">
           <Link
-            href={`/buy/${car.id || "preview"}`}
+            href={`/cars/${car.id || "preview"}`}
             className="flex-1 py-2.5 btn-outline-gold rounded-xl text-sm font-semibold text-center group-hover:bg-gold-500 group-hover:text-black transition-all duration-300"
           >
             View Details

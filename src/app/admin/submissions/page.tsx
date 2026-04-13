@@ -68,7 +68,9 @@ export default function AdminSubmissionsPage() {
       await updateDoc(doc(db, "car_submissions", id), updateData);
 
       // Inventory workflow: Move to Buy Cars if approved and damage is manageable
-      if (finalStatus === "approved" && (sub.damageLevel === "Minor" || sub.damageLevel === "Moderate")) {
+      const isManageable = sub.damageLevel.toLowerCase() !== "severe" && sub.damageLevel.toLowerCase() !== "total loss";
+      
+      if (finalStatus === "approved" && isManageable) {
         await addDoc(collection(db, "cars"), {
           title: `${sub.carYear} ${sub.carBrand} ${sub.carModel}`,
           brand: sub.carBrand,
@@ -79,8 +81,8 @@ export default function AdminSubmissionsPage() {
           images: sub.images,
           city: sub.city,
           state: sub.state,
-          fuelType: "Petrol", // Default for submissions
-          transmission: "Manual", // Default for submissions
+          fuelType: "Petrol", // Default
+          transmission: "Manual", // Default
           mileage: 0, 
           condition: sub.damageLevel === "Minor" ? "Good" : "Fair",
           status: "available",
@@ -92,6 +94,8 @@ export default function AdminSubmissionsPage() {
           updatedAt: new Date()
         });
         toast.success("Car approved and moved to active Inventory! ✅");
+      } else if (finalStatus === "approved") {
+        toast.success("Car approved, but too damaged for direct inventory. Manual listing required.");
       } else {
         toast.success(`Submission status updated to ${finalStatus}`);
       }
