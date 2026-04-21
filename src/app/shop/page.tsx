@@ -10,6 +10,7 @@ import {
   orderBy,
   addDoc,
   serverTimestamp,
+  getDocs,
 } from "firebase/firestore";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -126,16 +127,50 @@ export default function ShopPage() {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   useEffect(() => {
-    const q = query(
-      collection(db, "products"),
-      where("status", "==", "approved"),
-      orderBy("createdAt", "desc")
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product)));
-      setLoading(false);
-    });
-    return unsub;
+    let active = true;
+
+    // Timeout fallback: force loading false after 5s
+    const timer = setTimeout(() => {
+      if (active) setLoading(false);
+    }, 5000);
+
+    const fetchProducts = async () => {
+      try {
+        const q = query(
+          collection(db, "products"),
+          where("status", "==", "approved")
+        );
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+          // fallback: fetch all products
+          const allSnap = await getDocs(collection(db, "products"));
+          if (active) {
+            setProducts(
+              allSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Product))
+            );
+          }
+        } else {
+          if (active) {
+            setProducts(
+              snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product))
+            );
+          }
+        }
+      } catch (err) {
+        console.error("Products fetch error:", err);
+        if (active) setProducts([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    fetchProducts();
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, []);
 
   const getStock = (p: Product) =>
@@ -303,18 +338,12 @@ export default function ShopPage() {
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center">
-            <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-5 border border-white/10">
-              <Package size={36} className="text-gray-600" />
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-2">
-              {search || category !== "all"
-                ? "No products found"
-                : "Marketplace is currently empty"}
-            </h3>
-            <p className="text-gray-500 text-sm mb-6 max-w-sm">
+            <ShoppingBag className="w-16 h-16 text-gold-500 mb-4 opacity-50" />
+            <h3 className="text-xl font-semibold text-white mb-2">Marketplace is currently empty</h3>
+            <p className="text-gray-400 mb-6 max-w-sm">
               {search || category !== "all"
                 ? "Try adjusting your search or filter"
-                : "Check back soon for spare parts, accessories & more"}
+                : "No products available yet. Check back soon!"}
             </p>
             <div className="flex gap-3">
               {(search || category !== "all") && (

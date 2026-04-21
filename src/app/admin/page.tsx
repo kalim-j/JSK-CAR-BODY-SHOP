@@ -39,6 +39,7 @@ export default function AdminDashboard() {
     pendingSubmissions: 0,
     totalDealers: 0,
     activeDealers: 0,
+    totalProducts: 0,
   });
 
   useEffect(() => {
@@ -53,15 +54,26 @@ export default function AdminDashboard() {
     }));
 
     // Fetch real pending submissions from Firestore
-    const q = query(collection(db, "car_submissions"), where("status", "in", ["pending", "under_review"]));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const q1 = query(collection(db, "car_submissions"), where("status", "in", ["pending", "under_review"]));
+    const unsub1 = onSnapshot(q1, (snapshot) => {
       setStats(prev => ({
         ...prev,
         pendingSubmissions: snapshot.docs.length
       }));
     });
 
-    return () => unsubscribe();
+    const q2 = query(collection(db, "products"));
+    const unsub2 = onSnapshot(q2, (snapshot) => {
+      setStats(prev => ({
+        ...prev,
+        totalProducts: snapshot.docs.length
+      }));
+    });
+
+    return () => {
+      unsub1();
+      unsub2();
+    };
   }, []);
 
   const statCards = [
@@ -96,6 +108,14 @@ export default function AdminDashboard() {
       color: "text-blue-400",
       bg: "bg-blue-500/10",
       href: "/admin/dealers",
+    },
+    {
+      label: "Total Products",
+      value: stats.totalProducts,
+      icon: ShoppingBag,
+      color: "text-purple-400",
+      bg: "bg-purple-500/10",
+      href: "/admin/products",
     },
   ];
 
@@ -143,7 +163,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-5 mb-10">
           {statCards.map((card, i) => (
             <motion.div
               key={card.label}
@@ -177,6 +197,8 @@ export default function AdminDashboard() {
             <h2 className="text-white font-bold text-lg mb-5">Quick Actions</h2>
             <div className="space-y-3">
               {[
+                { label: "Manage Marketplace", href: "/admin/products", icon: ShoppingBag, color: "text-purple-400" },
+                { label: "Add New Product", href: "/admin/products/add", icon: Plus, color: "text-pink-400" },
                 { label: "Add New Car", href: "/admin/cars/add", icon: Plus, color: "text-gold-400" },
                 { label: "View Submissions", href: "/admin/submissions", icon: ClipboardList, color: "text-yellow-400" },
                 { label: "Manage Dealers", href: "/admin/dealers", icon: Database, color: "text-blue-400" },
