@@ -123,16 +123,16 @@ export const getCars = async (filters?: {
   fuelType?: string;
   featured?: boolean;
 }): Promise<Car[]> => {
-  const constraints: QueryConstraint[] = [orderBy("createdAt", "desc")];
+  const constraints: QueryConstraint[] = [];
 
   if (filters?.status) {
-    constraints.unshift(where("status", "==", filters.status));
+    constraints.push(where("status", "==", filters.status));
   }
   if (filters?.city) {
-    constraints.unshift(where("city", "==", filters.city));
+    constraints.push(where("city", "==", filters.city));
   }
   if (filters?.featured !== undefined) {
-    constraints.unshift(where("featured", "==", filters.featured));
+    constraints.push(where("featured", "==", filters.featured));
   }
 
   const q = query(collection(db, "cars"), ...constraints);
@@ -145,7 +145,6 @@ export const getFeaturedCars = async (limitCount = 6): Promise<Car[]> => {
     collection(db, "cars"),
     where("featured", "==", true),
     where("status", "==", "available"),
-    orderBy("createdAt", "desc"),
     limit(limitCount)
   );
   const snapshot = await getDocs(q);
@@ -232,7 +231,6 @@ export const subscribeToActiveDealers = (
   const q = query(
     collection(db, "dealers"),
     where("status", "==", "active"),
-    orderBy("lastUpdated", "desc"),
     limit(10)
   );
 
@@ -305,8 +303,7 @@ export const getUserSubmissions = async (
 ): Promise<CarSubmission[]> => {
   const q = query(
     collection(db, "car_submissions"),
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc")
+    where("userId", "==", userId)
   );
   const snapshot = await getDocs(q);
   return snapshot.docs.map(

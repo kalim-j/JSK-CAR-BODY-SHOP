@@ -22,7 +22,6 @@ export default function FeaturedCars() {
     const q = query(
       collection(db, "cars"),
       where("status", "==", "available"),
-      orderBy("createdAt", "desc"),
       limit(6)
     );
 

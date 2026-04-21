@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ChevronDown, LogOut, User, Settings } from "lucide-react";
+import { Menu, X, ChevronDown, LogOut, User, Settings, TrendingUp } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 
@@ -13,6 +13,7 @@ const NAVIGATION_LINKS = [
   { href: "/", label: "Home" },
   { href: "/buy", label: "Buy Cars" },
   { href: "/sell", label: "Sell Your Car" },
+  { href: "/shop", label: "Marketplace" },
   { href: "/services", label: "Services" },
   { href: "/dealers", label: "Dealer Network" },
   { href: "/contact", label: "Contact" },
@@ -152,13 +153,23 @@ export default function Navbar() {
                           </Link>
                         )}
                         <Link
-                          href="/profile"
+                          href="/dashboard"
                           className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/5 rounded-lg transition-colors"
                           onClick={() => setUserMenuOpen(false)}
                         >
                           <User size={14} className="text-charcoal-400" />
-                          My Profile
+                          User Dashboard
                         </Link>
+                        {isAdmin && (
+                          <Link
+                            href="/admin/analytics"
+                            className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/5 rounded-lg transition-colors"
+                            onClick={() => setUserMenuOpen(false)}
+                          >
+                            <TrendingUp size={14} className="text-gold-500" />
+                            Admin Analytics
+                          </Link>
+                        )}
                         <button
                           onClick={() => {
                             handleLogout();

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { CartProvider } from "@/context/CartContext";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import WhatsAppButton from "@/components/ui/WhatsAppButton";
@@ -43,26 +44,28 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <body className="bg-black text-white antialiased font-sans">
         <AuthProvider>
-          <Navbar />
-          <main>{children}</main>
-          <Footer />
-          <WhatsAppButton />
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              style: {
-                background: "#1a1a1a",
-                color: "#ffffff",
-                border: "1px solid #D4AF37",
-              },
-              success: {
-                iconTheme: {
-                  primary: "#D4AF37",
-                  secondary: "#000",
+          <CartProvider>
+            <Navbar />
+            <main>{children}</main>
+            <Footer />
+            <WhatsAppButton />
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                style: {
+                  background: "#1a1a1a",
+                  color: "#ffffff",
+                  border: "1px solid #D4AF37",
                 },
-              },
-            }}
-          />
+                success: {
+                  iconTheme: {
+                    primary: "#D4AF37",
+                    secondary: "#000",
+                  },
+                },
+              }}
+            />
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>
