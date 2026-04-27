@@ -72,7 +72,7 @@ export default function HeroSection() {
   return (
     <section
       ref={ref}
-      className="relative min-h-screen flex items-center justify-center overflow-hidden"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden pt-28"
     >
       {/* Parallax Background */}
       <motion.div style={{ y: backgroundY }} className="absolute inset-0 z-0">
@@ -111,7 +111,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="inline-flex items-center gap-2 glass-gold px-5 py-2 rounded-full mb-8 border border-gold-500/30"
+          className="inline-flex mx-auto text-center items-center gap-2 glass-gold px-5 py-2 rounded-full mt-8 mb-8 border border-gold-500/30"
         >
           <Star size={14} className="text-gold-500 fill-gold-500" />
           <span className="text-gold-400 text-sm font-medium tracking-wide">
