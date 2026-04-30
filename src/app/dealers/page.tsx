@@ -1,391 +1,171 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
-import { Search, MapPin, Star, Wrench, Phone, ChevronRight, CarFront, Filter, X, Globe } from "lucide-react";
-import { Dealer, subscribeToDealers } from "@/lib/firestore";
-import { useDebouncedValue } from "@/hooks/useDebounce";
+import { supabase } from "@/lib/supabase";
+import { Dealer } from "@/types/dealer";
+import DealerCard from "./DealerCard";
+import FilterBar, { DealerFilters } from "./FilterBar";
+import DealerMap from "./DealerMap";
+import AISearchBar from "./AISearchBar";
+import InquiryModal from "./InquiryModal";
+import { CarFront, Users, Map as MapIcon, Grid } from "lucide-react";
 
-const CAR_TYPES = ["All", "Sedan", "SUV", "Luxury", "EV", "Hatchback"];
-
-export default function PublicDealersPage() {
+export default function DealersPage() {
   const [dealers, setDealers] = useState<Dealer[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Filters
-  const [rawSearch, setRawSearch] = useState("");
-  const search = useDebouncedValue(rawSearch, 300);
-  const [selectedType, setSelectedType] = useState("All");
+  const [activeCount, setActiveCount] = useState(0);
+  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
+  const [selectedDealer, setSelectedDealer] = useState<Dealer | null>(null);
+
+  const [filters, setFilters] = useState<DealerFilters>({
+    search: "",
+    state: "All",
+    type: "All",
+    minRating: 0,
+    verifiedOnly: false,
+  });
 
   useEffect(() => {
-    // Listen to real-time dealers
-    const unsubscribe = subscribeToDealers(
-      (data) => {
-        // filter out inactive
-        setDealers(data.filter((d) => d.status === "active"));
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Error loading dealers", err);
-        setLoading(false);
+    async function fetchDealers() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('dealers')
+        .select('*')
+        .eq('is_active', true)
+        .order('ai_score', { ascending: false });
+
+      if (error) {
+        console.error("Error fetching dealers:", error);
+      } else {
+        setDealers(data as Dealer[]);
+        setActiveCount(data.length);
       }
-    );
-    return () => unsubscribe();
+      setLoading(false);
+    }
+
+    fetchDealers();
   }, []);
 
-  const filteredDealers = useMemo(() => {
-    return dealers.filter((d) => {
-      // 1. Search Query
-      const q = search.toLowerCase();
-      if (
-        q &&
-        !d.name.toLowerCase().includes(q) &&
-        !d.city.toLowerCase().includes(q) &&
-        !d.state.toLowerCase().includes(q)
-      ) {
-        return false;
-      }
-      
-      // 2. Car Type Filter
-      if (selectedType !== "All") {
-        const hasType = d.carTypes.some(t => 
-          t.toLowerCase().includes(selectedType.toLowerCase()) || 
-          selectedType.toLowerCase().includes(t.toLowerCase()) ||
-          t.toLowerCase().includes("all")
-        );
-        if (!hasType) return false;
-      }
+  const states = useMemo(() => {
+    const s = new Set(dealers.map(d => d.state).filter(Boolean) as string[]);
+    return Array.from(s).sort();
+  }, [dealers]);
 
+  const filteredDealers = useMemo(() => {
+    return dealers.filter(dealer => {
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        const matchName = dealer.name.toLowerCase().includes(q);
+        const matchCity = dealer.city?.toLowerCase().includes(q);
+        const matchSpec = dealer.specializations.some(s => s.toLowerCase().includes(q));
+        if (!matchName && !matchCity && !matchSpec) return false;
+      }
+      if (filters.state !== "All" && dealer.state !== filters.state) return false;
+      if (filters.type !== "All" && !dealer.dealer_type.includes(filters.type) && !dealer.dealer_type.includes("both")) return false;
+      if (dealer.average_rating < filters.minRating) return false;
+      if (filters.verifiedOnly && !dealer.is_verified) return false;
       return true;
     });
-  }, [dealers, search, selectedType]);
+  }, [dealers, filters]);
 
-  const clearFilters = () => {
-    setRawSearch("");
-    setSelectedType("All");
-  };
-
-  // OSM Search States
-  const [osmState, setOsmState] = useState("Tamil Nadu");
-  const [osmCity, setOsmCity] = useState("");
-  const [osmDealers, setOsmDealers] = useState<any[]>([]);
-  const [osmLoading, setOsmLoading] = useState(false);
-  const [osmSearched, setOsmSearched] = useState(false);
-
-  const searchOsmDealers = async () => {
-    setOsmLoading(true);
-    setOsmSearched(true);
-    try {
-      const params = new URLSearchParams();
-      if (osmState) params.append("state", osmState);
-      if (osmCity) params.append("city", osmCity);
-      
-      const res = await fetch(`/api/nearby-dealers?${params.toString()}`);
-      const data = await res.json();
-      setOsmDealers(data.dealers || []);
-    } catch (err) {
-      console.error(err);
-      setOsmDealers([]);
-    } finally {
-      setOsmLoading(false);
-    }
+  const handleContact = (dealer: Dealer) => {
+    setSelectedDealer(dealer);
   };
 
   return (
-    <div className="min-h-screen bg-black pt-20">
-      {/* Header */}
-      <div className="bg-charcoal-950 border-b border-white/5 py-16">
-        <div className="container-custom">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-gold-500/30 text-gold-400 text-sm font-medium mb-6">
-              Certified Partners
+    <div className="min-h-screen bg-black font-sans text-white pt-20 pb-20">
+      <div className="relative border-b border-white/10 overflow-hidden bg-gradient-to-b from-[#111] to-black py-16 mb-10">
+        <div className="absolute inset-0 opacity-20 pointer-events-none" 
+             style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.15) 0%, transparent 70%)' }}></div>
+        
+        <div className="container-custom relative z-10 text-center">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-4 tracking-tight">
+            India's Trusted <span className="gold-text">Auto Dealer Network</span>
+          </h1>
+          <p className="text-charcoal-300 text-lg md:text-xl max-w-2xl mx-auto mb-8">
+            Find verified car dealers & spare parts suppliers near you — powered by AI
+          </p>
+          
+          <div className="inline-flex items-center gap-6 glass border border-white/10 rounded-full px-6 py-3 shadow-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+              <span className="text-sm font-semibold text-white">{activeCount} Active Dealers</span>
             </div>
-            <h1 className="font-display text-4xl sm:text-5xl font-bold text-white mb-4">
-              Authorized <span className="gold-text">Dealer Network</span>
-            </h1>
-            <p className="text-charcoal-400 max-w-xl mx-auto">
-              Connect with our certified network of restoration and sales partners across India. 
-              Find your dream restored car from a trusted dealer near you.
-            </p>
-          </motion.div>
+            <div className="w-px h-4 bg-white/10"></div>
+            <div className="flex items-center gap-2 text-sm text-charcoal-400">
+              <CarFront size={16} /> Pan India
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="container-custom py-10">
-        {/* Controls */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-10">
-          <div className="relative flex-1 max-w-xl">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal-400" />
-            <input
-              type="text"
-              placeholder="Search by dealer name, city, or state..."
-              value={rawSearch}
-              onChange={(e) => setRawSearch(e.target.value)}
-              className="input-dark w-full pl-11 pr-10 py-3 rounded-xl text-sm"
-            />
-            {rawSearch && (
-              <button
-                onClick={() => setRawSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal-500 hover:text-white"
-              >
-                <X size={15} />
-              </button>
-            )}
-          </div>
+      <div className="container-custom">
+        {/* Step 5: AI Search Bar */}
+        <AISearchBar allDealers={dealers} onContact={handleContact} />
+
+        {/* Step 3: Smart Filter Bar */}
+        <FilterBar onFilterChange={setFilters} states={states} />
+
+        {/* Results Info & View Toggle */}
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+          <h2 className="text-xl font-display font-bold text-white">
+            Search Results <span className="text-gold-500">({filteredDealers.length})</span>
+          </h2>
           
-          <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
-            {CAR_TYPES.map((type) => (
-              <button
-                key={type}
-                onClick={() => setSelectedType(type)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                  selectedType === type
-                    ? "btn-gold"
-                    : "glass text-charcoal-300 border border-white/10 hover:border-gold-500/30 hover:text-white"
-                }`}
-              >
-                {type}
-              </button>
-            ))}
+          <div className="flex bg-charcoal-950 border border-white/10 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
+                viewMode === "grid" ? "bg-white/10 text-white" : "text-charcoal-400 hover:text-white"
+              }`}
+            >
+              <Grid size={16} /> Grid
+            </button>
+            <button
+              onClick={() => setViewMode("map")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
+                viewMode === "map" ? "bg-white/10 text-white" : "text-charcoal-400 hover:text-white"
+              }`}
+            >
+              <MapIcon size={16} /> Map
+            </button>
           </div>
         </div>
 
-        {/* Results Info */}
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-charcoal-400 text-sm">
-            Showing <span className="text-white font-semibold">{filteredDealers.length}</span> active dealers
-          </p>
-          {(rawSearch || selectedType !== "All") && (
-            <button
-              onClick={clearFilters}
-              className="text-xs text-charcoal-400 hover:text-red-400 flex items-center gap-1 transition-colors"
-            >
-              <X size={12} /> Clear filters
-            </button>
-          )}
-        </div>
-
-        {/* Grid */}
+        {/* Dealer Grid or Map */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-64 rounded-2xl border border-white/5 bg-charcoal-900/50 skeleton" />
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-96 rounded-2xl glass border border-white/5 skeleton"></div>
             ))}
           </div>
-        ) : filteredDealers.length === 0 ? (
-          <div className="text-center py-20 glass-dark rounded-2xl border border-white/5">
-            <Filter size={48} className="text-charcoal-700 mx-auto mb-4" />
-            <h3 className="text-white font-semibold text-xl mb-2">No dealers found</h3>
-            <p className="text-charcoal-400 mb-6 max-w-md mx-auto">
-              We couldn&apos;t find any dealers matching your filters. Try adjusting your search criteria.
-            </p>
-            <button onClick={clearFilters} className="btn-outline-gold px-6 py-2 rounded-full text-sm">
-              Clear All Filters
-            </button>
-          </div>
-        ) : (
-          <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <AnimatePresence>
-              {filteredDealers.map((dealer, idx) => (
-                <DealerCard key={dealer.id || idx} dealer={dealer} index={idx} />
+        ) : filteredDealers.length > 0 ? (
+          viewMode === "grid" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+              {filteredDealers.map(dealer => (
+                <DealerCard key={dealer.id} dealer={dealer} onContact={handleContact} />
               ))}
-            </AnimatePresence>
-          </motion.div>
+            </div>
+          ) : (
+            <div className="animate-fade-in">
+              <DealerMap dealers={filteredDealers} />
+            </div>
+          )
+        ) : (
+          <div className="text-center py-20 glass-dark border border-white/5 rounded-2xl">
+            <Users size={48} className="mx-auto mb-4 text-charcoal-600" />
+            <h3 className="text-xl font-bold text-white mb-2">No Dealers Found</h3>
+            <p className="text-charcoal-400">Try adjusting your filters or search query.</p>
+          </div>
         )}
-
-        {/* --- OSM Dealer Search Section --- */}
-        <div className="mt-20 pt-16 border-t border-white/5">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Explore <span className="text-gold-400">All Nearby Locations</span>
-            </h2>
-            <p className="text-charcoal-400 max-w-xl mx-auto">
-              Can&apos;t find an authorized partner? Search our broader database powered by OpenStreetMap to find local car dealers, repair shops, and parts suppliers in your area.
-            </p>
-          </div>
-
-          <div className="max-w-3xl mx-auto bg-charcoal-900/50 border border-white/10 rounded-2xl p-6 backdrop-blur-sm mb-10">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-charcoal-400 mb-1.5 uppercase tracking-wider">State / Region</label>
-                <input
-                  type="text"
-                  value={osmState}
-                  onChange={(e) => setOsmState(e.target.value)}
-                  placeholder="e.g., Tamil Nadu"
-                  className="input-dark w-full px-4 py-2.5 rounded-xl text-sm"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-charcoal-400 mb-1.5 uppercase tracking-wider">City (Optional)</label>
-                <input
-                  type="text"
-                  value={osmCity}
-                  onChange={(e) => setOsmCity(e.target.value)}
-                  placeholder="e.g., Chennai"
-                  className="input-dark w-full px-4 py-2.5 rounded-xl text-sm"
-                />
-              </div>
-              <div className="flex items-end">
-                <button
-                  onClick={searchOsmDealers}
-                  disabled={osmLoading || !osmState}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl btn-gold text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 h-[42px]"
-                >
-                  {osmLoading ? (
-                    <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Search size={16} /> Search Local
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {osmSearched && (
-            <div className="mb-10">
-              <h3 className="text-xl font-semibold text-white mb-6">
-                Found {osmDealers.length} locations {osmCity ? `in ${osmCity}` : `in ${osmState}`}
-              </h3>
-              
-              {osmLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-48 rounded-2xl border border-white/5 bg-charcoal-900/50 skeleton" />
-                  ))}
-                </div>
-              ) : osmDealers.length === 0 ? (
-                <div className="text-center py-10 glass-dark rounded-2xl border border-white/5">
-                  <MapPin size={32} className="text-charcoal-600 mx-auto mb-3" />
-                  <p className="text-charcoal-400">No locations found. Try expanding your search area.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {osmDealers.map((dealer) => (
-                    <div key={dealer.id} className="glass-dark rounded-2xl p-6 border border-white/5 flex flex-col h-full hover:border-gold-500/30 transition-colors">
-                      <div className="mb-4">
-                        <div className="inline-flex text-xs font-semibold text-gold-400 bg-gold-400/10 px-2 py-1 rounded mb-3">
-                          {dealer.type.replace('_', ' ').toUpperCase()}
-                        </div>
-                        <h4 className="text-lg font-bold text-white mb-1">{dealer.name}</h4>
-                        <div className="flex items-start gap-1.5 text-charcoal-400 text-sm">
-                          <MapPin size={14} className="mt-0.5 shrink-0 text-gold-500" />
-                          <span>
-                            {dealer.address ? `${dealer.address}, ` : ''}
-                            {dealer.city}, {dealer.state}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-auto space-y-2 pt-4 border-t border-white/5">
-                        {dealer.phone && (
-                          <div className="flex items-center gap-2 text-sm text-charcoal-300">
-                            <Phone size={14} className="text-charcoal-500" />
-                            <a href={`tel:${dealer.phone}`} className="hover:text-gold-400 transition-colors">
-                              {dealer.phone}
-                            </a>
-                          </div>
-                        )}
-                        {dealer.website && (
-                          <div className="flex items-center gap-2 text-sm text-charcoal-300">
-                            <Globe size={14} className="text-charcoal-500" />
-                            <a href={dealer.website.startsWith('http') ? dealer.website : `https://${dealer.website}`} target="_blank" rel="noreferrer" className="hover:text-gold-400 transition-colors truncate">
-                              {dealer.website.replace(/^https?:\/\//, '')}
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
       </div>
+
+      {selectedDealer && (
+        <InquiryModal 
+          dealer={selectedDealer} 
+          onClose={() => setSelectedDealer(null)} 
+        />
+      )}
     </div>
-  );
-}
-
-function DealerCard({ dealer, index }: { dealer: Dealer; index: number }) {
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.3, delay: index * 0.05 }}
-      className="glass-dark rounded-2xl p-6 border border-white/5 hover:border-gold-500/30 transition-all group flex flex-col h-full"
-    >
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-xl font-bold text-white mb-1 group-hover:text-gold-400 transition-colors">
-            {dealer.name}
-          </h3>
-          <div className="flex items-center gap-1.5 text-charcoal-400 text-sm">
-            <MapPin size={14} className="text-gold-500" />
-            {dealer.city}, {dealer.state}
-          </div>
-        </div>
-        <div className="flex items-center gap-1 bg-gold-500/10 px-2 py-1 rounded-md border border-gold-500/20">
-          <Star size={12} className="text-gold-500 fill-gold-500" />
-          <span className="text-gold-400 text-xs font-bold">{dealer.rating.toFixed(1)}</span>
-        </div>
-      </div>
-
-      <div className="space-y-4 mb-6 flex-grow">
-        {/* Specs */}
-        <div>
-          <p className="text-xs text-charcoal-500 uppercase font-semibold tracking-wider mb-2 flex items-center gap-1.5">
-            <Wrench size={12} /> Specialization
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {dealer.specialization.slice(0, 3).map((spec, i) => (
-              <span key={i} className="text-xs text-charcoal-300 bg-white/5 px-2 py-1 rounded border border-white/10">
-                {spec}
-              </span>
-            ))}
-            {dealer.specialization.length > 3 && (
-              <span className="text-xs text-charcoal-500 bg-white/5 px-2 py-1 rounded border border-white/5">
-                +{dealer.specialization.length - 3}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Cars */}
-        <div>
-          <p className="text-xs text-charcoal-500 uppercase font-semibold tracking-wider mb-2 flex items-center gap-1.5">
-            <CarFront size={12} /> Handles Car Types
-          </p>
-          <p className="text-sm text-charcoal-300">
-            {dealer.carTypes.join(", ")}
-          </p>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex gap-3 pt-4 border-t border-white/5 mt-auto">
-        <a
-          href={`tel:${dealer.phone}`}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 text-charcoal-300 hover:bg-white/10 hover:text-white border border-white/10 transition-colors text-sm font-medium"
-        >
-          <Phone size={14} /> Contact
-        </a>
-        <Link
-          href={`/buy?search=${encodeURIComponent(dealer.city)}`}
-          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl btn-outline-gold text-sm font-semibold group-hover:bg-gold-500 group-hover:text-black transition-all"
-        >
-          View Local Cars <ChevronRight size={14} />
-        </Link>
-      </div>
-    </motion.div>
   );
 }

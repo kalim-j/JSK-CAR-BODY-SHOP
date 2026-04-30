@@ -9,7 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
     "@hookform/resolvers": "^3.10.0",
+    "@react-google-maps/api": "^2.20.8",
+    "@supabase/supabase-js": "^2.105.1",
     "clsx": "^2.1.1",
     "embla-carousel-react": "^8.5.2",
     "firebase": "^11.6.0",
