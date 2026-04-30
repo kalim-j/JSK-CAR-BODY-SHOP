@@ -80,7 +80,7 @@ export default function DealersPage() {
         
         <div className="container-custom relative z-10 text-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-4 tracking-tight">
-            India's Trusted <span className="gold-text">Auto Dealer Network</span>
+            India&apos;s Trusted <span className="gold-text">Auto Dealer Network</span>
           </h1>
           <p className="text-charcoal-300 text-lg md:text-xl max-w-2xl mx-auto mb-8">
             Find verified car dealers & spare parts suppliers near you — powered by AI

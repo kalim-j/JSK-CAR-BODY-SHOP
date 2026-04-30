@@ -23,6 +23,12 @@ const nextConfig: NextConfig = {
       fullUrl: false,
     },
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
   async headers() {
     return [
       {

@@ -64,7 +64,7 @@ export default function AISearchBar({ allDealers, onContact }: AISearchBarProps)
               AI Dealer Finder
             </h3>
             <p className="text-charcoal-400 text-sm mb-4">
-              Describe what you're looking for in plain English. e.g. "I need a trusted Honda spare parts shop in Pune with good AC repair experience."
+              Describe what you&apos;re looking for in plain English. e.g. &quot;I need a trusted Honda spare parts shop in Pune with good AC repair experience.&quot;
             </p>
 
             <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
