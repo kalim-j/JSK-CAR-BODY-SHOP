@@ -20,6 +20,7 @@ import toast from "react-hot-toast";
 import Image from "next/image";
 import { db } from "@/lib/firebase";
 import { collection, addDoc } from "firebase/firestore";
+import CustomSelect from "@/components/ui/CustomSelect";
 
 const isValidURL = (url: string) => {
   try {
@@ -58,9 +59,18 @@ export default function SellPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
+    watch,
   } = useForm<SellFormData>({
     resolver: zodResolver(sellSchema),
+    defaultValues: {
+      carBrand: "",
+      state: "Tamil Nadu",
+    }
   });
+
+  const watchedBrand = watch("carBrand");
+  const watchedState = watch("state");
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -283,15 +293,15 @@ export default function SellPage() {
                   <label className="text-charcoal-300 text-sm font-medium block mb-2">
                     Car Brand *
                   </label>
-                  <select
-                    {...register("carBrand")}
-                    className="input-dark w-full px-4 py-3 rounded-xl text-sm"
-                  >
-                    <option value="">Select Brand</option>
-                    {CAR_BRANDS.map((b) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </select>
+                  <CustomSelect
+                    value={watchedBrand || ""}
+                    onChange={(v) => setValue("carBrand", v, { shouldValidate: true })}
+                    placeholder="Select Brand"
+                    options={[
+                      { value: "", label: "Select Brand" },
+                      ...CAR_BRANDS.map(b => ({ value: b, label: b }))
+                    ]}
+                  />
                   {errors.carBrand && (
                     <p className="text-red-400 text-xs mt-1">{errors.carBrand.message}</p>
                   )}
@@ -522,15 +532,11 @@ export default function SellPage() {
                   <label className="text-charcoal-300 text-sm font-medium block mb-2">
                     State *
                   </label>
-                  <select
-                    {...register("state")}
-                    className="input-dark w-full px-4 py-3 rounded-xl text-sm"
-                  >
-                    <option value="">Select State</option>
-                    {INDIAN_STATES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+                  <CustomSelect
+                    value={watchedState || "Tamil Nadu"}
+                    onChange={(v) => setValue("state", v, { shouldValidate: true })}
+                    options={INDIAN_STATES.map(s => ({ value: s, label: s }))}
+                  />
                   {errors.state && (
                     <p className="text-red-400 text-xs mt-1">{errors.state.message}</p>
                   )}
