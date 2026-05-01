@@ -80,7 +80,7 @@ export default function AdminSubmissionsPage() {
         id: d.id,
         ...d.data(),
         _collection: "submissions",
-      })) as CarSubmission[];
+      })) as unknown as CarSubmission[];
       setSubmissions((prev) => {
         const legacy = prev.filter((s) => (s as any)._collection !== "submissions");
         return [...fromSubs, ...legacy];
@@ -92,7 +92,7 @@ export default function AdminSubmissionsPage() {
         id: d.id,
         ...d.data(),
         _collection: "car_submissions",
-      })) as CarSubmission[];
+      })) as unknown as CarSubmission[];
       setSubmissions((prev) => {
         const fromSell = prev.filter((s) => (s as any)._collection !== "car_submissions");
         return [...fromSell, ...fromCarSubs];
